@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model auth_log {
+  id         Int           @id @default(autoincrement())
+  user_id    Int
+  type       auth_log_type @default(login)
+  created_at DateTime      @default(now())
+  users      users         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_log_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model users {
+  id             Int       @id @default(autoincrement())
+  name           String
+  email          String    @unique
+  password       String    @db.Text
+  birth_date     DateTime? @db.Date
+  gender         String?
+  remember_token String?   @db.Text
+  role_id        Int?
+  status         String
+  deleted        Boolean   @default(false)
+  created_by     Int?
+  last_login     DateTime  @default(now())
+  lat_long       String?
+  postal_code    String?
+  address        String?
+  city           String?
+  country        String?
+  image          String?
+  state          String?
+  number         String?
+  score          Int       @default(0)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @default(now()) @updatedAt
+
+  role          roles?          @relation(fields: [role_id], references: [id])
+  auth_log      auth_log[]
+  notifications notifications[]
+  rooms         rooms[]
+  players       players[]
+  games         games[]
+  donations     donations[]
+  users_meta    user_meta[]
+  socket        socket[]
+  player_score  player_score[]
+  points_log    points_log[]
+}
+
+model user_meta {
+  id      Int     @id @default(autoincrement())
+  user_id Int
+  key     String? @db.VarChar(255)
+  value   String? @db.VarChar(255)
+  users   users   @relation(fields: [user_id], references: [id])
+}
+
+model roles {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?  @db.Text
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+  deleted     Boolean  @default(false)
+  users       users[]
+}
+
+model notifications {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  type       String
+  message    String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
+}
+
+model games {
+  id          Int       @id @default(autoincrement())
+  board_state Json?
+  status      String    @default("active")
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
+  created_by  Int
+  is_deleted  Boolean   @default(false)
+  start_time  DateTime?
+  end_time    DateTime?
+
+  creator       users           @relation(fields: [created_by], references: [id])
+  room          rooms[]
+  players       players[]
+  player_score  player_score[]
+}
+
+model players {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  room_id    Int?
+  game_id    Int
+  found_word String?
+  game_time  String?
+  score      Int      @default(0)
+  position   Int      @default(0)
+  joined_at  DateTime @default(now())
+  status     String?  @default("waiting")
+  remaining_time String? 
+  game_points    Int  @default(0)
+
+  game games  @relation(fields: [game_id], references: [id])
+  room rooms? @relation(fields: [room_id], references: [id])
+  user users  @relation(fields: [user_id], references: [id])
+  player_score player_score[]
+}
+
+model player_score {
+  id         Int      @id @default(autoincrement())
+  player_id  Int
+  user_id    Int
+  room_id    Int?
+  game_id    Int
+  found_word String
+  score      Int      @default(0)
+  created_at DateTime @default(now())
+  turn_time  String?
+
+  game games  @relation(fields: [game_id], references: [id])
+  room rooms? @relation(fields: [room_id], references: [id])
+  player  players  @relation(fields: [player_id], references: [id])
+  user    users    @relation(fields: [user_id], references: [id])
+}
+
+model rooms {
+  id           Int      @id @default(autoincrement())
+  game_id      Int
+  room_code    String   @unique
+  type         String   @default("public")
+  is_full      Boolean  @default(false)
+  status       String   @default("active")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  created_by   Int
+  is_deleted   Boolean  @default(false)
+  board        String?  @db.Text
+  entry_points Int      @default(0)
+
+  creator      users?         @relation(fields: [created_by], references: [id])
+  game         games          @relation(fields: [game_id], references: [id])
+  players      players[]
+  player_score player_score[]
+  points_log   points_log[]
+}
+
+model points_log {
+  id          Int      @id @default(autoincrement())
+  description String?  @db.Text
+  room_id     Int?
+  user_id     Int
+  inn         Int      @default(0)
+  out         Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+
+  user        users?          @relation(fields: [user_id], references: [id])
+  room        rooms?   @relation(fields: [room_id], references: [id])
+}
+
+model donations {
+  id           Int      @id @default(autoincrement())
+  description  String?  @db.Text
+  user_id      Int
+  amount       Int
+  status       String   @default("pending")
+  reference_id String?
+  response     String?  @db.Text
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
+}
+
+enum auth_log_type {
+  login
+  logout
+}
+
+model socket {
+  id        Int      @id @default(autoincrement())
+  user_id   Int      @unique
+  socket_id String
+  createdAt DateTime @default(now())
+
+  user    users   @relation(fields: [user_id], references: [id])
+}
